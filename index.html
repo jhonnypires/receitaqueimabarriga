@@ -46,11 +46,12 @@
       const urlParams = new URLSearchParams(window.location.search);
       const utmParams = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
 
-      // Captura e armazena UTMs se existirem na URL
+      // Captura e armazena apenas UTMs que existem na URL (valores limpos)
       utmParams.forEach(function (param) {
         const value = urlParams.get(param);
-        if (value) {
-          sessionStorage.setItem(param, value);
+        if (value && value.trim() !== '') {
+          // Armazena o valor limpo, sem espaços extras
+          sessionStorage.setItem(param, value.trim());
         }
       });
 
@@ -61,10 +62,11 @@
         checkoutLinks.forEach(function (link) {
           const url = new URL(link.href);
 
-          // Adiciona UTMs armazenadas ao link
+          // Adiciona apenas UTMs que foram capturadas e têm valor
           utmParams.forEach(function (param) {
             const value = sessionStorage.getItem(param);
-            if (value && !url.searchParams.has(param)) {
+            // Só adiciona se: 1) existe valor, 2) não está vazio, 3) não existe no link
+            if (value && value.trim() !== '' && !url.searchParams.has(param)) {
               url.searchParams.set(param, value);
             }
           });
