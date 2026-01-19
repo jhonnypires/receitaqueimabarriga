@@ -102,14 +102,15 @@
   </script>
   <!-- End UTM Tracking Script -->
 
-  <!-- Proteção contra modificação de UTMs por scripts externos -->
+
+  <!-- Proteção AGRESSIVA contra modificação de UTMs -->
   <script>
-    // Congela os valores das UTMs antes que outros scripts possam modificá-las
+    // PROTEÇÃO MÁXIMA: Garante que UTMs permaneçam 100% limpas
     (function () {
       const originalUrl = new URL(window.location.href);
       const utmParams = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
 
-      // Armazena UTMs originais em variável protegida
+      // Captura UTMs ORIGINAIS da URL
       window.__ORIGINAL_UTMS__ = {};
       utmParams.forEach(function (param) {
         const value = originalUrl.searchParams.get(param);
@@ -118,8 +119,64 @@
         }
       });
 
-      // Congela o objeto para evitar modificações
+      // Congela o objeto
       Object.freeze(window.__ORIGINAL_UTMS__);
+
+      // Função para FORÇAR UTMs limpas nos links
+      function enforceCleanUTMs() {
+        const checkoutLinks = document.querySelectorAll('a[href*="pay.kiwify.com.br"]');
+
+        checkoutLinks.forEach(function (link) {
+          try {
+            const url = new URL(link.href);
+
+            // REMOVE todas as UTMs existentes primeiro (podem estar poluídas)
+            utmParams.forEach(function (param) {
+              url.searchParams.delete(param);
+            });
+
+            // ADICIONA apenas as UTMs originais limpas
+            Object.keys(window.__ORIGINAL_UTMS__).forEach(function (param) {
+              const value = window.__ORIGINAL_UTMS__[param];
+              url.searchParams.set(param, value);
+            });
+
+            link.href = url.toString();
+          } catch (e) {
+            console.warn('Erro ao processar link:', e);
+          }
+        });
+      }
+
+      // Executa imediatamente
+      enforceCleanUTMs();
+
+      // Executa quando DOM carregar
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', enforceCleanUTMs);
+      }
+
+      // MONITORAMENTO CONTÍNUO: Re-executa a cada 500ms para sobrescrever modificações
+      setInterval(enforceCleanUTMs, 500);
+
+      // Também executa após eventos de clique (antes do redirecionamento)
+      document.addEventListener('click', function (e) {
+        const target = e.target.closest('a[href*="pay.kiwify.com.br"]');
+        if (target) {
+          enforceCleanUTMs();
+        }
+      }, true);
+
+      // Log para debug
+      if (Object.keys(window.__ORIGINAL_UTMS__).length > 0) {
+        console.log('🔒 UTMs PROTEGIDAS (valores originais):', window.__ORIGINAL_UTMS__);
+      }
+
+      // BLOQUEIA modificações do Utmify nas UTMs
+      window.addEventListener('load', function () {
+        enforceCleanUTMs();
+        console.log('✅ Proteção de UTMs ativada - Links verificados');
+      });
     })();
   </script>
   <script>
