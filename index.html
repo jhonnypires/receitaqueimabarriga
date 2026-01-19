@@ -41,52 +41,87 @@
   <!-- End Meta Pixel Code -->
   <!-- UTM Tracking Script -->
   <script>
-    // Captura UTMs da URL e armazena no sessionStorage
+    // Sistema de captura e repasse de UTMs - Valores 100% limpos e isolados
     (function () {
-      const urlParams = new URLSearchParams(window.location.search);
+      // Captura UTMs APENAS da URL original, antes de qualquer processamento
+      const originalUrl = new URL(window.location.href);
       const utmParams = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
 
-      // Captura e armazena apenas UTMs que existem na URL (valores limpos)
+      // Objeto para armazenar apenas UTMs originais
+      const cleanUTMs = {};
+
+      // Captura valores ORIGINAIS da URL, sem processamento externo
       utmParams.forEach(function (param) {
-        const value = urlParams.get(param);
+        const value = originalUrl.searchParams.get(param);
+        // Armazena APENAS se existir e não estiver vazio
         if (value && value.trim() !== '') {
-          // Armazena o valor limpo, sem espaços extras
-          sessionStorage.setItem(param, value.trim());
+          cleanUTMs[param] = value.trim();
         }
       });
 
-      // Função para adicionar UTMs aos links do checkout
-      function addUTMsToCheckoutLinks() {
+      // Função para adicionar UTMs limpas aos links do checkout
+      function addCleanUTMsToCheckout() {
         const checkoutLinks = document.querySelectorAll('a[href*="pay.kiwify.com.br"]');
 
         checkoutLinks.forEach(function (link) {
-          const url = new URL(link.href);
+          try {
+            const url = new URL(link.href);
 
-          // Adiciona apenas UTMs que foram capturadas e têm valor
-          utmParams.forEach(function (param) {
-            const value = sessionStorage.getItem(param);
-            // Só adiciona se: 1) existe valor, 2) não está vazio, 3) não existe no link
-            if (value && value.trim() !== '' && !url.searchParams.has(param)) {
-              url.searchParams.set(param, value);
-            }
-          });
+            // Adiciona APENAS as UTMs capturadas originalmente
+            Object.keys(cleanUTMs).forEach(function (param) {
+              const value = cleanUTMs[param];
+              // Adiciona apenas se não existir no link (preserva parâmetros da Kiwify)
+              if (!url.searchParams.has(param)) {
+                url.searchParams.set(param, value);
+              }
+            });
 
-          link.href = url.toString();
+            link.href = url.toString();
+          } catch (e) {
+            // Ignora erros de URL inválida
+            console.warn('Erro ao processar link:', e);
+          }
         });
       }
 
       // Executa quando o DOM estiver pronto
       if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', addUTMsToCheckoutLinks);
+        document.addEventListener('DOMContentLoaded', addCleanUTMsToCheckout);
       } else {
-        addUTMsToCheckoutLinks();
+        addCleanUTMsToCheckout();
       }
 
-      // Re-executa após 2 segundos para garantir que links dinâmicos sejam capturados
-      setTimeout(addUTMsToCheckoutLinks, 2000);
+      // Re-executa após carregamento completo para capturar links dinâmicos
+      setTimeout(addCleanUTMsToCheckout, 2000);
+
+      // Log para debug (remover em produção se necessário)
+      if (Object.keys(cleanUTMs).length > 0) {
+        console.log('UTMs capturadas (valores limpos):', cleanUTMs);
+      }
     })();
   </script>
   <!-- End UTM Tracking Script -->
+
+  <!-- Proteção contra modificação de UTMs por scripts externos -->
+  <script>
+    // Congela os valores das UTMs antes que outros scripts possam modificá-las
+    (function () {
+      const originalUrl = new URL(window.location.href);
+      const utmParams = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+
+      // Armazena UTMs originais em variável protegida
+      window.__ORIGINAL_UTMS__ = {};
+      utmParams.forEach(function (param) {
+        const value = originalUrl.searchParams.get(param);
+        if (value && value.trim() !== '') {
+          window.__ORIGINAL_UTMS__[param] = value.trim();
+        }
+      });
+
+      // Congela o objeto para evitar modificações
+      Object.freeze(window.__ORIGINAL_UTMS__);
+    })();
+  </script>
   <script>
     window.pixelId = "6844d9846b0f75c03476cc94";
     var a = document.createElement("script");
